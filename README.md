@@ -129,24 +129,15 @@ pnpm run validate         # Check for unreplaced template placeholders
 
 Security is enforced in independent layers — Claude Code guard hooks, HTTP hardening (helmet/CORS/rate limits), token + session-cookie auth, Zod input validation, default-deny Firestore rules, and CI scanning (`pnpm audit`). See [docs/SECURITY.md](docs/SECURITY.md).
 
-### Known `pnpm audit` findings (manual fix)
+### Dependency audit status
 
+`pnpm audit --audit-level=high` exits **0** — no high or critical advisory is installed. The 12 remaining findings are all moderate (transitive dev/build tooling), below the CI gate.
 
-`pnpm audit` currently flags two high-severity CVEs — both transitive, dev/build-time only, not runtime-reachable:
+High/critical fixes in `pnpm-workspace.yaml` and the package manifests: `next`/`eslint-config-next` 16.2.12 → **16.4.1** (2× critical RCE, high DoS), `zod` 3.25.76 → **4.6.7** (high memory exhaustion), `body-parser` overrides **1.20.9 / 2.4.0** (high DoS), `vite` override **7.3.7** (high, dev-only), plus the existing `proxy-addr`, `tinypool`, `@grpc/grpc-js`, `@fastify/busboy`, `js-yaml`, `nanoid`, `brace-expansion`, `sharp`, and `source-map-js` overrides.
 
-| Package | Issue | Pulled in by |
-|---------|-------|--------------|
-| `js-yaml` | CVE-2026-59870 — quadratic CPU DoS on `!!omap` resolution | eslint's dependency chain (lint-time only) |
-| `nanoid` | Infinite loop when a custom generator's `size` is 0 | postcss, used by Tailwind/Next/Vitest builds (build-time only) |
-
-To patch: add these two lines under `overrides:` in `pnpm-workspace.yaml`, then run `pnpm install`:
-
-```yaml
-  js-yaml: '^4.3.1'
-  nanoid: '^3.3.17'
+```bash
+pnpm audit --audit-level=high   # → 12 moderate, 0 high/critical (exit 0)
 ```
-
-Confirm with `pnpm audit` — should show 0 high/critical findings.
 
 ## Git Workflow
 
