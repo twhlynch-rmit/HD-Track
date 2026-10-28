@@ -58,6 +58,50 @@ service cloud.firestore {
 
     // Add new collection rules above this comment using the /firebase-collection skill.
 
+    // locations/{locationId}
+    // Reference data for the Locator feature.
+    //
+    // Fully server-owned: the seed script and the /api/locations/nearby Route
+    // Handler read it with the Admin SDK, which bypasses these rules. Client
+    // access is denied outright, so coordinates and `active` cannot be forged
+    // and every search goes through one authenticated, validated endpoint.
+    match /locations/{locationId} {
+      allow read, write: if false;
+    }
+
+    // visits/{visitId}
+    // One document per visit a user logs against a location.
+    //
+    // This is the feature's non-trivial rules layer. A client can only:
+    //   - read its own visits
+    //   - create one document, once, with an exact key set
+    //   - only for a location that exists and is active
+    //   - with the location name matching that location's source of truth
+    //   - with server timestamps only
+    // Nothing can ever be updated or deleted.
+    match /visits/{visitId} {
+      allow read: if isAuthenticated() && isOwner(resource.data.uid) && notDeleted();
+
+      allow create: if isAuthenticated()
+        && isOwner(request.resource.data.uid)
+        && request.resource.data.keys().hasAll(['uid', 'locationId', 'locationName', 'visitedAt', 'createdAt', '_schemaVersion'])
+        && request.resource.data.keys().hasOnly(['uid', 'locationId', 'locationName', 'visitedAt', 'createdAt', '_schemaVersion'])
+        && request.resource.data.locationId is string
+        && request.resource.data.locationId.size() > 0
+        && request.resource.data.locationId.size() <= 128
+        && request.resource.data.locationName is string
+        && request.resource.data.locationName.size() > 0
+        && request.resource.data.locationName.size() <= 200
+        && request.resource.data._schemaVersion == 1
+        && request.resource.data.visitedAt == request.time
+        && request.resource.data.createdAt == request.time
+        && exists(/databases/$(database)/documents/locations/$(request.resource.data.locationId))
+        && get(/databases/$(database)/documents/locations/$(request.resource.data.locationId)).data.active == true
+        && request.resource.data.locationName == get(/databases/$(database)/documents/locations/$(request.resource.data.locationId)).data.name;
+
+      allow update, delete: if false;
+    }
+
     // ── Default deny ───────────────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
