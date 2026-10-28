@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { getServerSession } from '@/actions/auth.actions'
+import { getSession } from '@/lib/auth/session'
 import { adminDb } from '@/lib/firebase/admin'
 
 export const metadata: Metadata = {
@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 }
 
 export default async function DashboardPage() {
-  const session = await getServerSession()
+  const session = await getSession()
   const profileSnap = session ? await adminDb.collection('users').doc(session.uid).get() : null
 
   const displayName = profileSnap?.exists
