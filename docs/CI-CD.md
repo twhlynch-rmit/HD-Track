@@ -18,16 +18,16 @@ CI (ci.yml)
 Merge to main
     │
     ├──▶ Vercel (its own GitHub integration, not this repo's Actions)
-    │    └── Builds + deploys the frontend automatically — no Blaze plan needed
+    │    └── Builds + deploys the frontend, including the Locator's
+    │        /api/locations/nearby Route Handler
     │
-    └──▶ Deploy (deploy.yml)
-         └── Firestore rules — always deploys on push, free (no Blaze needed)
-
-         Backend (Cloud Function) — manual only, via "Run workflow" in the
-         Actions tab. Requires the Firebase project to be on the Blaze plan.
+    └──▶ Deploy (deploy.yml) — runs on every push to main
+         └── Firestore rules + indexes
 ```
 
-**Why the frontend isn't in `deploy.yml`:** this app is server-rendered (Server Actions, `/api/auth/session`, `proxy.ts`), so it needs a server host, not static Firebase Hosting. Vercel's free Hobby tier runs Next.js SSR natively with no billing account required — see **Vercel Setup** below. Firebase Hosting could also do this via its `frameworksBackend` integration, but that runs on Cloud Functions/Cloud Run under the hood, which requires the paid Blaze plan even at zero traffic — Vercel avoids that entirely for the frontend.
+**Why the frontend isn't in `deploy.yml`:** this app is server-rendered (Server Actions, Route Handlers, `proxy.ts`), so it needs a server host, not static Firebase Hosting. Vercel's free Hobby tier runs Next.js SSR and Route Handlers natively — see **Vercel Setup** below. Firebase Hosting could also do this via its `frameworksBackend` integration, but that runs on Cloud Functions/Cloud Run; Vercel avoids that extra service entirely.
+
+**Deployment scope:** `deploy.yml` owns Firestore rules and indexes. The Locator's Route Handler and Server Actions ship with the Vercel frontend, so there is no separate backend deploy or API URL to configure.
 
 ## Vercel Setup (Frontend)
 
@@ -44,10 +44,10 @@ Merge to main
    | `NEXT_PUBLIC_FIREBASE_APP_ID` | from `firebaseConfig` |
    | `NEXT_PUBLIC_APP_NAME` | app display name |
    | `NEXT_PUBLIC_APP_URL` | your Vercel production URL, once known |
-   | `FIREBASE_SERVICE_ACCOUNT_KEY_BASE64` | base64-encoded service account JSON (server-only — do **not** prefix with `NEXT_PUBLIC_`) |
+   | `FIREBASE_SERVICE_ACCOUNT_KEY_BASE64` | base64-encoded service account JSON (server-only; used by the nearby Route Handler and Server Actions — do **not** prefix with `NEXT_PUBLIC_`) |
 
 4. Deploy. Every push to `main` auto-deploys to production from then on — there's no approval gate on Vercel's side, so treat merging to `main` as shipping.
-5. If you later add the `backend/` Express API and need the frontend to call it cross-origin, set `CORS_ORIGIN` in the backend's env to your Vercel production URL.
+5. There is no separate API URL or CORS setting: `/api/locations/nearby` is same-origin with the app.
 
 ## GitHub Actions Secrets Required (for `deploy.yml`)
 
@@ -85,12 +85,15 @@ base64 -w 0 service-account.json
 # Authenticate locally (one-time) — no install needed, npx runs the CLI on demand
 npx firebase-tools login
 
-# Firestore rules — free, no Blaze needed
+# Firestore rules and indexes
 npx firebase-tools deploy --only firestore:rules
 npx firebase-tools deploy --only firestore:indexes
 
-# Backend Cloud Function — optional, requires the Blaze plan
-npx firebase-tools deploy --only functions
+# There is no functions deploy — the Locator API is a Next.js Route Handler
+# and ships with the frontend on Vercel.
+
+# Demo locations for the Locator (reads credentials from the root .env)
+pnpm --filter backend seed:locations
 ```
 
 The frontend has no manual `firebase deploy` equivalent — it deploys via Vercel (dashboard push, or `vercel --prod` with the Vercel CLI if installed).
@@ -99,8 +102,7 @@ The frontend has no manual `firebase deploy` equivalent — it deploys via Verce
 
 | Environment | Branch | Auto-deploy |
 |-------------|--------|-------------|
-| Production frontend | `main` | Yes, via Vercel's GitHub integration |
-| Production Firestore rules | `main` | Yes, via `deploy.yml` |
-| Production backend (optional) | `main` | No — manual `workflow_dispatch` only |
+| Production frontend (and Locator API Route Handler) | `main` | Yes, via Vercel's GitHub integration |
+| Production Firestore rules & indexes | `main` | Yes, via `deploy.yml` |
 | Staging | _set up per project_ | Optional |
 | Local | your own free Firebase project | `pnpm run dev` |
