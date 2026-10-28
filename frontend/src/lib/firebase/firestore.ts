@@ -1,6 +1,6 @@
 import { collection, doc, type CollectionReference, type DocumentData } from 'firebase/firestore'
 import { getClientDb } from './client'
-import type { UserProfile } from '@/types/firestore'
+import type { LocationVisit, UserProfile } from '@/types/firestore'
 
 /**
  * Creates a typed Firestore collection reference.
@@ -22,4 +22,15 @@ export function getUsersCollection() {
 
 export function userDoc(uid: string) {
   return doc(getUsersCollection(), uid)
+}
+
+/**
+ * Locator feature — visits logged by a user (owner-only).
+ *
+ * `locations` deliberately has no client accessor: it is server-owned
+ * reference data, read only by the Admin SDK inside the nearby Route Handler.
+ * See firebase/firestore.rules.
+ */
+export function getVisitsCollection() {
+  return typedCollection<LocationVisit>('visits')
 }
