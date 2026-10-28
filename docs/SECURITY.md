@@ -245,6 +245,8 @@ pnpm audit --audit-level=high
 pnpm audit --fix
 ```
 
+Known state: every high/critical advisory is patched via direct dependency bumps (`next` 16.4.1, `zod` 4.6.7) and `overrides:` in `pnpm-workspace.yaml` (see README § Security). `pnpm audit --audit-level=high` exits **0**; the 12 remaining findings are moderate transitive dev/build tooling below the gate.
+
 Dependabot opens weekly PRs for outdated packages in `/backend`, `/frontend`, and GitHub Actions workflows (`.github/dependabot.yml`).
 
 ---

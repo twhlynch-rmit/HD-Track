@@ -1,0 +1,38 @@
+name: Deploy
+
+# Runs on every push to main. The frontend deploys through Vercel's own GitHub
+# integration.
+#
+# This workflow owns the Firestore security rules and indexes.
+#
+# Prerequisites (see docs/CI-CD.md):
+#   - GitHub secrets: FIREBASE_PROJECT_ID, FIREBASE_SERVICE_ACCOUNT_KEY_BASE64
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy-firestore:
+    name: Deploy Firestore Rules & Indexes
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        run: |
+          echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64 }}" | base64 --decode > "$RUNNER_TEMP/gcp-sa.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/gcp-sa.json" >> "$GITHUB_ENV"
+
+      - name: Deploy Firestore rules and indexes
+        run: |
+          npx firebase-tools deploy \
+            --only firestore \
+            --project ${{ secrets.FIREBASE_PROJECT_ID }} \
+            --non-interactive

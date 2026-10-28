@@ -1,8 +1,8 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { adminAuth } from '@/lib/firebase/admin'
+import { SESSION_COOKIE_NAME } from '@/lib/auth/session'
 import { cookies } from 'next/headers'
 
-const SESSION_COOKIE_NAME = '__session'
 const SESSION_DURATION_MS = 60 * 60 * 24 * 14 * 1000 // 14 days
 
 /**
